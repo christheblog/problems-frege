@@ -52,5 +52,7 @@ Creating a new puzzle of n disks on rod 1 is done by calling the create function
 Solving the problem is actually done by calling the `move` function declared as follow :
 ```move :: Depth -> Move -> State Towers ()```
 
-The call `move 4 (1,3)` means : Move 4 rings from tower 1 onto tower 3.
+The call `move 4 (1,3)` means : `move 4 rings from tower 1 onto tower 3`
+
+
 
