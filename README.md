@@ -3,8 +3,7 @@
 
 ## Description
 
-This project will contains some small problems that I enjoyed solving in Frege. 
-It will be most likely short snippets of code 
+This project will contain some small problems that I enjoyed solving in Frege. It will be most likely short snippets of code. 
 
 Frege is a Haskell for the JVM. If you are interested you can have a look at the following links : 
 https://github.com/Frege/frege/wiki/_pages
@@ -17,8 +16,6 @@ Frege also has a simple Eclipse plugin available here : https://github.com/Frege
 
 If you don't know what this puzzle is about, you can have a look at the Wikipedia page : https://en.wikipedia.org/wiki/Tower_of_Hanoi
 
-A short description of the puzzle is : 
-
 The puzzle consists of three rods, and a number of rings of different sizes which can slide and stack-up onto any rod.
 The initial state of the puzzle is a pile of rings stacked in ascending order on one of the rods.
 
@@ -27,6 +24,8 @@ The objective of the puzzle is to move all the rings to another rod, using the f
 - Only an upper ring can be taken
 - A move consists of moving the upper ring from one of rod and put it at the top of the stack of another rod.
 - A Ring cannot be placed on the top of a smaller one 
+
+The puzzle is actually quite tedious to solve manually. For a problem of depth n, (depth being the total number of rings), the minimum number of moves to perform is 2^n - 1.  
 
 
 The solution implemented is a recursive algorithm to move the tower from the first rod to the second or third rod.
