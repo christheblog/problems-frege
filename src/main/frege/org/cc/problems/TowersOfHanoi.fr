@@ -8,7 +8,7 @@
 -- ...
 -- N the biggest ring
 -- 
--- we can conceptually represent a tower as follow : [2,5,6,7] 
+-- We can conceptually represent a tower as follow : [2,5,6,7] 
 -- The head of the list is the first accessible ring, representing the depth 1 ring.
 -- Depth 4 ring would be 7.
 --
@@ -18,7 +18,7 @@
 -- The recursive case is describing how to build a tower of level n on a target position, by : 
 --   - building a tower of depth n-1 on the remaining free position
 --	 - Moving the level n ring from the source tower onto the target position 
--- 	 - Building a tower of depth n-1 from the remainig position onto the target position 
+-- 	 - Building a tower of depth n-1 from the remaining position onto the target position 
 --
 
 module org.cc.problems.TowersOfHanoi where
@@ -26,17 +26,22 @@ module org.cc.problems.TowersOfHanoi where
 import Control.monad.State
 
 
--- A tower is an ascending ordered list of rings
+-- A tower is an ascending ordered list of rings on a Rod
 -- Towers is a 3-uplet of Tower
+data Rod = LeftR | MiddleR | RightR
+derive Show Rod
 type Ring = Int
 type Tower = [Ring]
 type Towers = (Tower,Tower,Tower)
--- When moving a token from a source to a destination 
-type Src = Int
-type Dest = Int
+-- When moving a token from a source to a destination
+-- Only three rods
+type Src = Rod
+type Dest = Rod
 type Move = (Src,Dest)
 -- Ring depth level
 type Depth = Int
+-- A solution is a list of (Ring,Move)
+type Solution = [(Ring,Move)]
 
 
 -- Generate a n-depth problem. Rings are on tower 1.
@@ -44,13 +49,15 @@ create :: Depth -> Towers
 create n = ([1..n],[],[])
 
 -- Move n rings from the src tower to the destination one
-move :: Depth -> Move -> State Towers ()
-move 1 (src,dest) = let third = other src dest in 
-	state (\towers -> 
-		((), rearrange ((src, tail $ tow towers src)) 
-                       ((dest, (head $ tow towers src) : (tow towers dest))) 
-                       (third, tow towers third)))
-move n (src,dest) 
+move :: Depth -> Move -> State (Towers,Solution) ()
+move 1 (src,dest) = do
+	_ <- State.get
+	ring <- takeTop src
+	_ <- putRing dest ring
+	(towers,solution) <- State.get
+	_ <- State.put (towers,(ring,(src,dest)) : solution)
+	return ()
+move n (src,dest)
 	| n > 0 = do
 		_ <- State.get
 		third = other src dest
@@ -60,48 +67,66 @@ move n (src,dest)
 		return ()
 	| otherwise = error("Invalid arguments. Depth must be a strictly positive integer.")
 
+
+-- Take the top element of the given tower
+private takeTop :: Rod -> State (Towers,Solution) Ring
+private takeTop rod = do
+	(towers,solution) <- State.get
+	let target = (tow towers rod)
+	let (t1,t2) = others rod
+	let top = (head target)
+	let remaining = (tail target)
+	_ <- State.put ((rearrange (t1,tow towers t1) (t2,tow towers t2) (rod,remaining)),solution)
+	return top
+
+-- Put the given ring on the top of a given rod
+private putRing :: Rod -> Ring -> State (Towers,Solution) ()
+private putRing rod ring = do
+	(towers,solution) <- State.get
+	let target = (tow towers rod)
+	let (t1,t2) = others rod
+	let increased = ring : target
+	_ <- State.put ((rearrange (t1,tow towers t1) (t2,tow towers t2) (rod, increased)),solution)
+	return ()
+
 -- Extract the content of the first,second or third tower
-private tow :: Towers -> Int -> [Int]
-private tow towers 1 = first towers	where first (t,_,_) = t
-private tow towers 2 = second towers where second (_,t,_) = t
-private tow towers 3 = third towers	where third (_,_,t) = t
-private tow towers _ = error("The Toower Of Hanoi problem has exactly 3 towers indexed from 1 to 3.")
+private tow :: Towers -> Rod -> [Ring]
+private tow towers LeftR = first towers	where first (t,_,_) = t
+private tow towers MiddleR = second towers where second (_,t,_) = t
+private tow towers RightR = third towers where third (_,_,t) = t
 
 -- Extract the remaining tower index when provided a source and a destination index
-private other :: Src -> Dest -> Int
-private other 1 2 = 3
-private other 1 3 = 2
-private other 2 3 = 1
+private other :: Src -> Dest -> Rod
+private other LeftR MiddleR = RightR
+private other LeftR RightR = MiddleR
+private other MiddleR RightR = LeftR
 private other first second = other second first
 
+-- Extract the 2 other Rods given a source Rod
+private others :: Src -> (Rod,Rod)
+private others LeftR = (MiddleR,RightR)
+private others RightR = (LeftR,MiddleR)
+private others MiddleR = (LeftR,RightR)
+
 -- We need to rebuild Towers in order after manipulating individual towers
-private rearrange :: (Int,Tower) -> (Int,Tower) -> (Int,Tower) -> Towers
-private rearrange (1,t1) (2,t2) (3,t3) = (t1,t2,t3)
-private rearrange (1,t1) (3,t3) (2,t2) = (t1,t2,t3)
+private rearrange :: (Rod,Tower) -> (Rod,Tower) -> (Rod,Tower) -> Towers
+private rearrange (LeftR,t1) (MiddleR,t2) (RightR,t3) = (t1,t2,t3)
+private rearrange (LeftR,t1) (RightR,t3) (MiddleR,t2) = (t1,t2,t3)
 -- else we rotate until we have the first tower with index one
 private rearrange t1 t2 t3 = rearrange t2 t3 t1
 
 
-
--- Dealing with state
--- The Smart constructor wouldn't be needed in Haskell, but is in Frege as the data constructor State is not accessible
--- In Haskell writing : State $ (\x -> (x,())) would be legal
-
--- Smart state constructor
-private state :: (s -> (a, s)) -> State s a
-private state f = do
-    s <- State.get
-    let (x, s') = f s
-    State.put s'
-    return x
-
-
 -- Main example
 -- Moving a tower of depth 12 from position 1 -> 3
--- Note : Above 12, this code will actually Stackoverflow
 main :: IO ()
 main = do
 	n = 12
-	init = create $ n
-	let (_,final) = State.runState (move n (1,3)) init
-	putStrLn . show $ final 
+	init = (create $ n,[])
+	let (_,final) = State.runState (move n (LeftR,RightR)) init
+	putStrLn "Final tower state :"
+	putStrLn . show . fst $ final
+	putStrLn "Number of steps :"
+	putStrLn . show . length . snd $ final
+	putStrLn "Steps"
+	let solution = reverse . snd $ final
+	putStrLn . unlines . map (show) $  solution
